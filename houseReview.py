@@ -62,6 +62,34 @@ class Game():
     rain_image = loadImage("characters/prec.png", resolution[1])
     design_image=loadImage("characters/designer.png", resolution[1])
 
+    wind_quotes = [
+        ("Looks good!", 6,8),
+        ("Too much wind!", 3,5),
+        ("This is really bad.", 2,4),
+        ("Uh...", 0,5),
+        ("Okay...", 3,7),
+        ("Good wind protection.", 7,10),
+        ("This is good.", 7,9)
+    ]
+    rain_quotes = [
+        ("Looks good!", 6,8),
+        ("Too much wind!", 3,5),
+        ("This is really bad.", 2,4),
+        ("Uh...", 0,5),
+        ("Okay...", 3,7),
+        ("Good wind protection.", 7,10),
+        ("This is good.", 7,9)
+    ]
+    design_quotes = [
+        ("This line of work", 6,8),
+        ("Too much wind!", 3,5),
+        ("This is really bad.", 2,4),
+        ("Uh...", 0,5),
+        ("Okay...", 3,7),
+        ("Good wind protection.", 7,10),
+        ("This is good.", 7,9)
+    ]
+
     def __init__(self):
         self.money = 100
         self.mode = ""
@@ -80,6 +108,11 @@ class Game():
         build_textbox.rebuild()
         shop_textbox.html_text="Yo though <br>$"+str(game.money)
         shop_textbox.rebuild()
+
+    def speak(self, quotes, rating):
+        available = [quote[0] for quote in quotes if (quote[1]<rating*10 and rating*10<quote[2])]
+        print("i can say ",len(available))
+        return " ".join(random.sample(available, random.randint(1,len(available))))
 
     def draw(self):
         if self.building:
@@ -342,6 +375,8 @@ while jump_out == False:
                     game.review_stage = 0
                     ok_button.text="OK"
                     ok_button.rebuild()
+                    review_textbox.html_text=game.speak(game.wind_quotes, game.building.wind_rating)
+                    review_textbox.rebuild()
                     rating_textbox.html_text=outOfTen(game.building.wind_rating)
                     rating_textbox.rebuild()
 
@@ -354,12 +389,14 @@ while jump_out == False:
                         game.building=None
                     else:
                         game.review_stage+=1
-                        review_textbox.html_text="this is so bad lol"
-                        review_textbox.rebuild()
                         if game.review_stage==1:
                             rating = game.building.rain_rating
+                            quotes = game.rain_quotes
                         else:
                             rating = game.building.design_rating
+                            quotes = game.design_quotes
+                        review_textbox.html_text=game.speak(quotes, rating)
+                        review_textbox.rebuild()
                         rating_textbox.html_text=outOfTen(rating)
                         rating_textbox.rebuild()
                 if event.ui_element == basket_button:
