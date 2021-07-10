@@ -2,7 +2,7 @@ import pygame
 import pygame_gui
 import random
 
-resolution = (1500,700)
+resolution = (1200,700)
 gridSize = 64
 topLeft = (80,80)
 
@@ -26,6 +26,12 @@ def loadImage(name,r,r2=None):
     image = pygame.image.load("data/"+name)
     image = pygame.transform.scale(image, (r, r2))
     return image
+
+def outOfTen(rating):
+    rating = round(rating*10,2)
+    if rating == int(rating):
+        rating = int(rating)
+    return str(rating)+"/10"
 
 class Block():
 
@@ -52,13 +58,14 @@ class Game():
 
     wind_image = loadImage("characters/mrwind.png", resolution[1])
     rain_image = loadImage("characters/prec.png", resolution[1])
-    design_image=loadImage("characters/boringmrwind.png", resolution[1])
+    design_image=loadImage("characters/designer.png", resolution[1])
 
     def __init__(self):
         self.money = 100
         self.mode = ""
         self.review_stage = 0
         self.baskets = 0
+        self.bucketPrice = 100
         self.building = None
 
     def start(self):
@@ -107,12 +114,12 @@ class Building():
             self.flyingBlock.draw()
         for block in self.blocks:
             block.draw()
-
-        for i in range(len(self.holdings)):
-            d = gridSize//4
-            pygame.draw.rect(game_display, (100,100,100), (topLeft[0]+(self.width+1+2*i)*gridSize-d, topLeft[1]-d, 2*d+gridSize,2*d+gridSize), 0)
-            if not self.holdings[i] == None:
-                self.holdings[i].draw()
+        if(game.mode=="b"):
+            for i in range(len(self.holdings)):
+                d = gridSize//4
+                pygame.draw.rect(game_display, (100,100,100), (topLeft[0]+(self.width+1+2*i)*gridSize-d, topLeft[1]-d, 2*d+gridSize,2*d+gridSize), 0)
+                if not self.holdings[i] == None:
+                    self.holdings[i].draw()
 
 class House(Building):
 
@@ -201,14 +208,14 @@ class House(Building):
         
         roofDown=cccf(bad=["door1","air","leftroof","rightroof"])
         roofRight=cccf(good=["rightroof","roof","air"],fallback=0.5)
-        wallRight=cccf(bad=["leftroof","leftwall"],okay=["wall","rightroof"])
+        wallRight=cccf(bad=["leftroof","leftwall"],okay=["roof","rightroof"])
         wallDown=cccf(bad=["door1","leftroof","rightroof","leftwall","rightwall"])
         leftwallDown=cccf(good=["air","leftwall","plateau"],fallback=0)
         rightwallDown=cccf(good=["air","rightwall","plateau"],fallback=0)
         rightRight=cccf(good=["leftwall","leftroof","air"],fallback=0)
         windowDown=cccf(bad=["door1","leftroof","rightroof","leftwall","rightwall"],okay=["air"])
-        doorheadDown=cccf(good=["door1"],fallback=0)
-        doorDown=cccf(good=["door1","air","plateau"],fallback=0)
+        doorheadDown=cccf(good=["door1"],okay=["air","plateau"],fallback=0)
+        doorDown=cccf(good=["door1","air","plateau"],okay=["roof"],fallback=0)
         connectionHash={
             "wall":[wallRight, wallDown], # Tile: [Right, Down] 
             "leftwall":[wallRight, leftwallDown],
@@ -230,19 +237,22 @@ class House(Building):
                         down=None
                     else:
                         down=self.grid[y+1][x]
-                    right=self.grid[y][x+1]
-                    design_rating+=connectionHash[self.grid[y][x].name][0](right)
                     design_rating+=connectionHash[self.grid[y][x].name][1](down)
-                    design_total+=2
+                    design_total+=1
+
+                    right=self.grid[y][x+1]
+                    if(right):
+                        design_rating+=connectionHash[self.grid[y][x].name][0](right)
+                        design_total+=1
         self.design_rating=0.5
         if design_total>0:
             self.design_rating = design_rating/design_total
         self.design_rating=self.design_rating**2   
         print(self.design_rating)
-                    
+        self.price=int((10**(self.design_rating*self.rain_rating*self.wind_rating)-2)*len(self.blocks))
+        print("$"+str(self.price))
 
 
-        
 
 # Main Menu
 menu_textbox = pygame_gui.elements.UITextBox(relative_rect=pygame.Rect((20, 25), (200, 75)),html_text="Yo though <br>$100",manager=managers[""])
@@ -297,14 +307,14 @@ while jump_out == False:
                 if event.key == pygame.K_RETURN:
                     game.building.flyingBlock=None
                     game.building.rate()
+                    payment_button.text="Recieve $"+str(game.building.price)+"!"
+                    payment_button.rebuild()
+                    game.money+=game.building.price
                     game.mode = "r"
                     game.review_stage = 0
                     ok_button.text="OK"
                     ok_button.rebuild()
-                    rating = round(game.building.wind_rating*10,2)
-                    if rating == int(rating):
-                        rating = int(rating)
-                    rating_textbox.html_text=str(rating)+"/10"
+                    rating_textbox.html_text=outOfTen(game.building.wind_rating)
                     rating_textbox.rebuild()
 
         if event.type == pygame.USEREVENT:
@@ -322,7 +332,6 @@ while jump_out == False:
                     game.start()
                 if event.ui_element == payment_button:
                     game.mode=""
-                    game.money+=48
                     menu_textbox.html_text="Yo though <br>$"+str(game.money)
                     menu_textbox.rebuild()
                     shop_textbox.html_text="Yo though <br>$"+str(game.money)
@@ -333,19 +342,18 @@ while jump_out == False:
                         game.building=None
                     else:
                         game.review_stage+=1
-                        if game.review_stage==1:
-                            rating = round(game.building.rain_rating*10,2)
-                        else:
-                            rating = round(game.building.design_rating*10,2)
-                        if rating == int(rating):
-                            rating = int(rating)
                         review_textbox.html_text="this is so bad lol"
                         review_textbox.rebuild()
-                        rating_textbox.html_text=str(rating)+"/10"
+                        if game.review_stage==1:
+                            rating = game.building.rain_rating
+                        else:
+                            rating = game.building.design_rating
+                        rating_textbox.html_text=outOfTen(rating)
                         rating_textbox.rebuild()
                 if event.ui_element == basket_button:
-                    if game.money>=100:
-                        game.money-=100
+                    if game.money>=game.bucketPrice:
+                        game.money-=game.bucketPrice
+                        game.bucketPrice+=100
                         game.baskets += 1
                     menu_textbox.html_text="Yo though <br>$"+str(game.money)
                     menu_textbox.rebuild()
