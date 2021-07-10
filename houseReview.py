@@ -66,28 +66,45 @@ class Game():
         ("Looks good!", 6,8),
         ("Too much wind!", 3,5),
         ("This is really bad.", 2,4),
-        ("Uh...", 0,5),
+        ("Uh...", -1,5),
         ("Okay...", 3,7),
+        ("Doesn't handle wind very well.", 3,6),
         ("Good wind protection.", 7,10),
-        ("This is good.", 7,9)
+        ("This is good.", 7,9),
     ]
     rain_quotes = [
-        ("Looks good!", 6,8),
-        ("Too much wind!", 3,5),
-        ("This is really bad.", 2,4),
-        ("Uh...", 0,5),
-        ("Okay...", 3,7),
-        ("Good wind protection.", 7,10),
-        ("This is good.", 7,9)
+        ("Precipitation check clear!", 9,10),
+        ("Subpar :(", 2,5),
+        ("Okay moisture level.", 5,7),
+        ("Too much rain!", 3,5),
+        ("Could not handle a light drizzle!", 2,4),
+        ("You forgot the roof...", -1,4),
+        ("I'm drowning!", 0,4),
+        ("Oh no...", 1,5),
+        ("Decent", 6,8),
+        ("Good waterproofing.", 8,10),
+        ("Could withstand a moonsoon!", 9,10),
+        ("This is a house not a swimming pool", 2,4),
     ]
     design_quotes = [
-        ("This line of work", 6,8),
-        ("Too much wind!", 3,5),
-        ("This is really bad.", 2,4),
-        ("Uh...", 0,5),
-        ("Okay...", 3,7),
-        ("Good wind protection.", 7,10),
-        ("This is good.", 7,9)
+        ("This line of work is not for you.", 0,4),
+        ("Is this even a building?", -1,4),
+        ("A tremendous waste of resources.", 0,5.5),
+        ("Awful.", 1,5),
+        ("Not connected enough!", 2,4),
+        ("Cheaply constructed.", 3,6),
+        ("Could use improvements.", 4,7),
+        ("At least you tried… ", 4,6),
+        ("Not quite my taste.", 3,6),
+        ("Good design.", 7,8),
+        ("You have keen eyes.", 7,8),
+        ("More colour, more everything.", 6.5,7),
+        ("Excellent connections.", 8,9),
+        ("Competent craftsmanship.", 7,8),
+        ("Wonderfully innovative.", 8.5,10),
+        ("A masterclass in interior design!", 9.3,9.7),
+        ("Can I buy it?", 9.5,10),
+
     ]
 
     def __init__(self):
@@ -110,9 +127,9 @@ class Game():
         shop_textbox.rebuild()
 
     def speak(self, quotes, rating):
-        available = [quote[0] for quote in quotes if (quote[1]<rating*10 and rating*10<quote[2])]
+        available = [quote[0] for quote in quotes if (quote[1]<rating*10 and rating*10<=quote[2])]
         print("i can say ",len(available))
-        return " ".join(random.sample(available, random.randint(1,len(available))))
+        return " ".join(random.sample(available, random.randint(1,random.randint(1,len(available)))))
 
     def draw(self):
         if self.building:
@@ -253,8 +270,8 @@ class House(Building):
         roofRight=cccf(good=["rightroof","roof","air"],fallback=0.5)
         wallRight=cccf(bad=["leftroof","leftwall"],okay=["roof","rightroof"])
         wallDown=cccf(bad=["door1","leftroof","rightroof","leftwall","rightwall"])
-        leftwallDown=cccf(good=["air","leftwall","plateau"],fallback=0)
-        rightwallDown=cccf(good=["air","rightwall","plateau"],fallback=0)
+        leftwallDown=cccf(good=["air","leftwall","plateau","roof"],fallback=0)
+        rightwallDown=cccf(good=["air","rightwall","plateau","roof"],fallback=0)
         rightRight=cccf(good=["leftwall","leftroof","air"],fallback=0)
         windowDown=cccf(bad=["door1","leftroof","rightroof","leftwall","rightwall"],okay=["air"])
         doorheadDown=cccf(good=["door1"],okay=["air","plateau"],fallback=0)
@@ -287,12 +304,12 @@ class House(Building):
                     if(right):
                         design_rating+=connectionHash[self.grid[y][x].name][0](right)
                         design_total+=1
-        self.design_rating=0.5
+        self.design_rating=0.8
         if design_total>0:
             self.design_rating = design_rating/design_total
-        self.design_rating=self.design_rating**2   
+        self.design_rating=self.design_rating**4   
         print(self.design_rating)
-        self.price=int((10**(self.design_rating*self.rain_rating*self.wind_rating)-1)*len(self.blocks))
+        self.price=int((10**(self.design_rating*self.rain_rating*self.wind_rating)-0.5)*len(self.blocks))
         print("$"+str(self.price))
 
 
@@ -363,8 +380,9 @@ while jump_out == False:
                 if event.ui_element == exit_button:
                     jump_out = True
                 if event.ui_element == build_button:
-                    game.mode="b"
-                    game.start()
+                    if game.money:
+                        game.mode="b"
+                        game.start()
                 if event.ui_element == done_button:
                     game.building.flyingBlock=None
                     game.building.rate()
