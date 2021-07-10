@@ -10,7 +10,7 @@ pygame.init()
 clock = pygame.time.Clock()
 game_display = pygame.display.set_mode(resolution)#, pygame.FULLSCREEN)
 pygame.display.set_caption('HouseReview!')
-pygame.display.set_icon(pygame.image.load("tiles/window.png"))
+pygame.display.set_icon(pygame.image.load("data/house/window.png"))
 
 managers={
     "":pygame_gui.UIManager(resolution), #Main menu
@@ -19,17 +19,18 @@ managers={
     "s":pygame_gui.UIManager(resolution), #Shop
 }
 
-def loadImage(name,r):
-    image = pygame.image.load("tiles/"+name)
-    image = pygame.transform.scale(image, (r, r))
+def loadImage(name,r,r2=None):
+    if not r2:
+        r2=r
+    image = pygame.image.load("data/"+name)
+    image = pygame.transform.scale(image, (r, r2))
     return image
 
 class Block():
 
-    def __init__(self, x, y, mirrored, name, image):
+    def __init__(self, x, y, name, image):
         self.x = x
         self.y = y
-        self.mirrored = mirrored
         self.name = name
         self.image = image
 
@@ -43,17 +44,19 @@ class Block():
         game.building.grid[self.y][self.x]=self
         game.building.newBlock(self.x)
 
-    def happiness(self):
-        return 0
-        
     def draw(self):
         game_display.blit(self.image, (self.x*gridSize+topLeft[0], self.y*gridSize+topLeft[1]))
 
 class Game():
 
+    wind_image = loadImage("characters/mrwind.png", resolution[1])
+    rain_image = loadImage("characters/mrwind.png", resolution[1])
+    design_image = loadImage("characters/mrwind.png", resolution[1])
+
     def __init__(self):
         self.money = 100
         self.mode = ""
+        self.review_stage = 0
         self.baskets = 0
         self.building = None
 
@@ -63,6 +66,9 @@ class Game():
     def draw(self):
         if self.building:
             self.building.draw()
+        if self.mode=="r":
+            image = [self.wind_image, self.rain_image, self.design_image][self.review_stage]
+            game_display.blit(image, (resolution[0]-resolution[1], topLeft[1]))
 
 class Building():
 
@@ -76,11 +82,9 @@ class Building():
         for i in range(self.height):
             self.grid.append([None]*self.width)
         self.images = {}
-        self.mirrorImages = {}
         for i in self.blockNames:
-            image = loadImage(i+".png", gridSize)
+            image = loadImage("house/"+i+".png", gridSize) # fix this when adding castles
             self.images[i] = image
-            self.mirrorImages[i] = pygame.transform.flip(image, True, False)
         self.newBlock(starter=True)
 
     def newBlock(self, x=3, starter=False):
@@ -88,30 +92,18 @@ class Building():
             name = random.choice(self.starters)
         else:
             name = random.choices(self.blockNames, weights = self.blockWeights, k = 1)[0]
-        mirrored = random.randint(0,1)
-        if not mirrored:
-            img = self.images[name]
-        else:
-            img = self.mirrorImages[name]
-        self.flyingBlock = Block(x,0, mirrored, name, img)
+        img = self.images[name]
+        self.flyingBlock = Block(x,0, name, img)
 
-    def rate(self):
-        rating = 0
-        for b in self.blocks:
-            rating+=b.happiness()
-        for x in range(self.width):
-            for y in range(len(self.grid)):
-                if self.grid[y][x]:
-                    rating += (self.grid[y][x].name=="roof0")
-                    rating -= (self.grid[y][x].name=="door1")
-        return 5
+
 
     def draw(self):
         for i in range(self.height+1):
             pygame.draw.line(game_display, (200,200,200), (topLeft[0],topLeft[1]+gridSize*i), (topLeft[0]+self.width*gridSize, topLeft[1]+gridSize*i), 1)
         for i in range(self.width+1):
             pygame.draw.line(game_display, (200,200,200), (topLeft[0]+gridSize*i,topLeft[1]), (topLeft[0]+gridSize*i, topLeft[1]+self.height*gridSize), 1)
-        self.flyingBlock.draw()
+        if self.flyingBlock:
+            self.flyingBlock.draw()
         for block in self.blocks:
             block.draw()
 
@@ -123,15 +115,73 @@ class Building():
 
 class House(Building):
 
-    starters = ["wall","edge","door1",]
-    blockNames = ["wall","edge","window","door0","door1","roof0","roof1","plateau"]
-    blockWeights = [1,1,0.5,0.4,0.4,1,1,0.5]
+    starters = ["wall","leftwall","rightwall","door1"]
+    blockNames = ["wall","leftwall","rightwall","window","door0","door1","leftroof","rightroof","roof","plateau"]
+    blockWeights = [2,1,1,1,0.8,0.8,1,1,2,1]
 
     def __init__(self, w,h, baskets=0):
         super(House, self).__init__(w,h,baskets)
         self.width = w
         self.height = h
         self.baskets = [None]*baskets
+
+    def rate(self):
+
+        # WIND RATING
+        wind_rating = 0
+        wind_total = 0
+        for x in range(self.width):
+            for y in range(len(self.grid)):
+                if self.grid[y][x]:
+                    if x==0 or not self.grid[y][x-1]:
+                        if (self.grid[y][x].name in ["leftwall","leftroof"]):
+                            wind_rating+=1
+                        elif self.grid[y][x].name in ["roof","rightroof"]:
+                            wind_rating+=0.5
+                        else:
+                            pass
+                        wind_total+=1
+                    if x==self.width-1 or not self.grid[y][x+1]:
+                        if (self.grid[y][x].name in ["rightwall","rightroof"]):
+                            wind_rating+=1
+                        elif self.grid[y][x].name in ["roof","leftroof"]:
+                            wind_rating+=0.5
+                        else:
+                            pass
+                        wind_total+=1
+        self.wind_rating=0.5
+        if wind_total>0:
+            self.wind_rating = wind_rating/wind_total
+        print(self.wind_rating)
+
+        # PRECIPATION RATING
+        rain_rating = 0
+        rain_total = 0
+        for x in range(self.width):
+            for y in range(self.height):
+                if(self.grid[y][x]==None):
+                    continue
+                if(self.grid[y][x].name in ["roof","plateau"]):
+                    rain_rating+=1
+                elif self.grid[y][x].name=="rightroof":
+                    if x<self.width<1 and self.grid[y][x+1]:
+                        rain_rating+=0.5
+                    else:
+                        rain_rating+=1
+                elif self.grid[y][x].name=="leftroof":
+                    if x>0 and self.grid[y][x-1]:
+                        rain_rating+=0.5
+                    else:
+                        rain_rating+=1
+                break
+            if y<self.height-1:
+                rain_total+=1
+                    
+        self.rain_rating=0.5
+        if rain_total>0:
+            self.rain_rating = rain_rating/rain_total
+        print(self.rain_rating)
+
         
 
 # Main Menu
@@ -149,8 +199,8 @@ back_buttons = [
 basket_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((350, 275), (200, 50)),text='Buy Bucket ($100)',manager=managers["s"])
 
 # Review
-review_textbox = pygame_gui.elements.UITextBox(relative_rect=pygame.Rect((20, 25), (300, 175)),html_text="This house is horrendous! I can barely accept this work.",manager=managers["r"])
-some_textbox = pygame_gui.elements.UITextBox(relative_rect=pygame.Rect((600, 125), (200, 200)),html_text="huh",manager=managers["r"])
+review_textbox = pygame_gui.elements.UITextBox(relative_rect=pygame.Rect((700, 25), (300, 175)),html_text="This house is horrendous! I can barely accept this work.",manager=managers["r"])
+some_textbox = pygame_gui.elements.UITextBox(relative_rect=pygame.Rect((600, 185), (200, 200)),html_text="huh",manager=managers["r"])
 ok_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((460, 400), (300, 200)),text='You recieved $X money.',manager=managers["r"])
 
 game = Game()
@@ -184,7 +234,6 @@ while jump_out == False:
                 if event.key == pygame.K_RETURN:
                     game.building.flyingBlock=None
                     game.building.rate()
-                    game.building = None
                     game.mode="r"
                     game.money+=48
                     ok_button.text="I recieve $"+str(48) # ska kunna få olika mycket. inte bara 48 dollar
@@ -204,11 +253,16 @@ while jump_out == False:
                     game.mode="b"
                     game.start()
                 if event.ui_element == ok_button:
-                    game.mode=""
-                    menu_textbox.html_text="Yo though <br>$"+str(game.money)
-                    menu_textbox.rebuild()
-                    shop_textbox.html_text="Yo though <br>$"+str(game.money)
-                    shop_textbox.rebuild()
+                    if game.review_stage==2:
+                        game.mode=""
+                        menu_textbox.html_text="Yo though <br>$"+str(game.money)
+                        menu_textbox.rebuild()
+                        shop_textbox.html_text="Yo though <br>$"+str(game.money)
+                        shop_textbox.rebuild()
+                    else:
+                        game.review_stage+=1
+                        review_textbox.rebuild()
+                        some_textbox.rebuild()
                 if event.ui_element == basket_button:
                     if game.money>=100:
                         game.money-=100
