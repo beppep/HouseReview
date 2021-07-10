@@ -16,6 +16,7 @@ managers={
     "":pygame_gui.UIManager(resolution), #Main menu
     "b":pygame_gui.UIManager(resolution), #Build
     "r":pygame_gui.UIManager(resolution), #Review
+    "p":pygame_gui.UIManager(resolution), #Payment
     "s":pygame_gui.UIManager(resolution), #Shop
 }
 
@@ -50,8 +51,8 @@ class Block():
 class Game():
 
     wind_image = loadImage("characters/mrwind.png", resolution[1])
-    rain_image = loadImage("characters/mrwind.png", resolution[1])
-    design_image = loadImage("characters/mrwind.png", resolution[1])
+    rain_image = loadImage("characters/prec.png", resolution[1])
+    design_image=loadImage("characters/boringmrwind.png", resolution[1])
 
     def __init__(self):
         self.money = 100
@@ -173,9 +174,8 @@ class House(Building):
                         rain_rating+=0.5
                     else:
                         rain_rating+=1
-                break
-            if y<self.height-1:
                 rain_total+=1
+                break
                     
         self.rain_rating=0.5
         if rain_total>0:
@@ -186,7 +186,6 @@ class House(Building):
 
 # Main Menu
 menu_textbox = pygame_gui.elements.UITextBox(relative_rect=pygame.Rect((20, 25), (200, 75)),html_text="Yo though <br>$100",manager=managers[""])
-shop_textbox = pygame_gui.elements.UITextBox(relative_rect=pygame.Rect((200, 125), (200, 75)),html_text="Yo though <br>$100",manager=managers["s"])
 build_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((350, 275), (200, 50)),text='Build Buildings',manager=managers[""])
 shop_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((350, 350), (200, 50)),text='Buy Baskets',manager=managers[""])
 exit_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((350, 425), (200, 50)),text='Bye Bye',manager=managers[""])
@@ -196,12 +195,16 @@ back_buttons = [
 ]
 
 # Shop
+shop_textbox = pygame_gui.elements.UITextBox(relative_rect=pygame.Rect((200, 125), (200, 75)),html_text="Yo though <br>$100",manager=managers["s"])
 basket_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((350, 275), (200, 50)),text='Buy Bucket ($100)',manager=managers["s"])
 
 # Review
 review_textbox = pygame_gui.elements.UITextBox(relative_rect=pygame.Rect((700, 25), (300, 175)),html_text="This house is horrendous! I can barely accept this work.",manager=managers["r"])
-some_textbox = pygame_gui.elements.UITextBox(relative_rect=pygame.Rect((600, 185), (200, 200)),html_text="huh",manager=managers["r"])
-ok_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((460, 400), (300, 200)),text='You recieved $X money.',manager=managers["r"])
+rating_textbox = pygame_gui.elements.UITextBox(relative_rect=pygame.Rect((720, 305), (100, 50)),html_text="huh",manager=managers["r"])
+ok_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((650, 450), (200, 100)),text='You recieved $X money.',manager=managers["r"])
+
+# Payment
+payment_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((resolution[0]//4, resolution[1]//4), (resolution[0]//2, resolution[1]//2)),text='You recieved $X money.',manager=managers["p"])
 
 game = Game()
 
@@ -234,10 +237,15 @@ while jump_out == False:
                 if event.key == pygame.K_RETURN:
                     game.building.flyingBlock=None
                     game.building.rate()
-                    game.mode="r"
-                    game.money+=48
-                    ok_button.text="I recieve $"+str(48) # ska kunna få olika mycket. inte bara 48 dollar
+                    game.mode = "r"
+                    game.review_stage = 0
+                    ok_button.text="OK"
                     ok_button.rebuild()
+                    rating = round(game.building.wind_rating*10,2)
+                    if rating == int(rating):
+                        rating = int(rating)
+                    rating_textbox.html_text=str(rating)+"/10"
+                    rating_textbox.rebuild()
 
         if event.type == pygame.USEREVENT:
             if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
@@ -252,17 +260,29 @@ while jump_out == False:
                 if event.ui_element == build_button:
                     game.mode="b"
                     game.start()
+                if event.ui_element == payment_button:
+                    game.mode=""
+                    game.money+=48
+                    menu_textbox.html_text="Yo though <br>$"+str(game.money)
+                    menu_textbox.rebuild()
+                    shop_textbox.html_text="Yo though <br>$"+str(game.money)
+                    shop_textbox.rebuild()
                 if event.ui_element == ok_button:
                     if game.review_stage==2:
-                        game.mode=""
-                        menu_textbox.html_text="Yo though <br>$"+str(game.money)
-                        menu_textbox.rebuild()
-                        shop_textbox.html_text="Yo though <br>$"+str(game.money)
-                        shop_textbox.rebuild()
+                        game.mode="p"
+                        game.building=None
                     else:
                         game.review_stage+=1
+                        if game.review_stage==1:
+                            rating = round(game.building.rain_rating*10,2)
+                        else:
+                            rating = round(game.building.design_rating*10,2)
+                        if rating == int(rating):
+                            rating = int(rating)
+                        review_textbox.html_text="this is so bad lol"
                         review_textbox.rebuild()
-                        some_textbox.rebuild()
+                        rating_textbox.html_text=str(rating)+"/10"
+                        rating_textbox.rebuild()
                 if event.ui_element == basket_button:
                     if game.money>=100:
                         game.money-=100
