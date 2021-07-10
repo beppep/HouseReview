@@ -182,6 +182,66 @@ class House(Building):
             self.rain_rating = rain_rating/rain_total
         print(self.rain_rating)
 
+        # DESIGNER RATING
+        def cccf(bad=[],okay=[],good=[],fallback=1): #createCheckConnectionFunction
+            def checkConnection(block):
+                if(block==None):
+                    blockType="air"
+                else:
+                    blockType=block.name
+                if blockType in good:
+                    return 1
+                elif blockType in okay:
+                    return 0.5
+                elif blockType in bad:
+                    return 0
+                else:
+                    return fallback
+            return checkConnection
+        
+        roofDown=cccf(bad=["door1","air","leftroof","rightroof"])
+        roofRight=cccf(good=["rightroof","roof","air"],fallback=0.5)
+        wallRight=cccf(bad=["leftroof","leftwall"],okay=["wall","rightroof"])
+        wallDown=cccf(bad=["door1","leftroof","rightroof","leftwall","rightwall"])
+        leftwallDown=cccf(good=["air","leftwall","plateau"],fallback=0)
+        rightwallDown=cccf(good=["air","rightwall","plateau"],fallback=0)
+        rightRight=cccf(good=["leftwall","leftroof","air"],fallback=0)
+        windowDown=cccf(bad=["door1","leftroof","rightroof","leftwall","rightwall"],okay=["air"])
+        doorheadDown=cccf(good=["door1"],fallback=0)
+        doorDown=cccf(good=["door1","air","plateau"],fallback=0)
+        connectionHash={
+            "wall":[wallRight, wallDown], # Tile: [Right, Down] 
+            "leftwall":[wallRight, leftwallDown],
+            "rightwall":[rightRight,rightwallDown],
+            "window":[wallRight,windowDown],
+            "door0":[wallRight,doorheadDown],
+            "door1":[wallRight,doorDown],
+            "leftroof":[roofRight,roofDown],
+            "rightroof":[rightRight,roofDown],
+            "roof":[roofRight,roofDown],
+            "plateau":[wallRight,wallDown],
+        }
+        design_total=0
+        design_rating=0
+        for x in range(self.width-1):
+            for y in range(self.height):
+                if(self.grid[y][x]):
+                    if(y==self.height-1):
+                        down=None
+                    else:
+                        down=self.grid[y+1][x]
+                    right=self.grid[y][x+1]
+                    design_rating+=connectionHash[self.grid[y][x].name][0](right)
+                    design_rating+=connectionHash[self.grid[y][x].name][1](down)
+                    design_total+=2
+        self.design_rating=0.5
+        if design_total>0:
+            self.design_rating = design_rating/design_total
+        self.design_rating=self.design_rating**2   
+        print(self.design_rating)
+                    
+
+
         
 
 # Main Menu
