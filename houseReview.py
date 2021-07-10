@@ -4,7 +4,7 @@ import random
 
 resolution = (1200,700)
 gridSize = 64
-topLeft = (80,80)
+topLeft = (20,20)
 
 pygame.init()
 clock = pygame.time.Clock()
@@ -42,6 +42,8 @@ class Block():
         self.image = image
 
     def land(self):
+        game.money-=1
+        game.updateMoneyTextboxes()
         highest = game.building.height
         for i in game.building.blocks:
             if i.x == self.x:
@@ -71,12 +73,20 @@ class Game():
     def start(self):
         self.building = House(random.randint(6,10), random.randint(6,9), baskets=self.baskets)
 
+    def updateMoneyTextboxes(self):
+        menu_textbox.html_text="Yo though <br>$"+str(game.money)
+        menu_textbox.rebuild()
+        build_textbox.html_text="Yo though <br>$"+str(game.money)
+        build_textbox.rebuild()
+        shop_textbox.html_text="Yo though <br>$"+str(game.money)
+        shop_textbox.rebuild()
+
     def draw(self):
         if self.building:
             self.building.draw()
         if self.mode=="r":
             image = [self.wind_image, self.rain_image, self.design_image][self.review_stage]
-            game_display.blit(image, (resolution[0]-resolution[1], topLeft[1]))
+            game_display.blit(image, (resolution[0]-(resolution[1]*3)//4, topLeft[1]))
 
 class Building():
 
@@ -172,7 +182,7 @@ class House(Building):
                 if(self.grid[y][x].name in ["roof","plateau"]):
                     rain_rating+=1
                 elif self.grid[y][x].name=="rightroof":
-                    if x<self.width<1 and self.grid[y][x+1]:
+                    if x<self.width-1 and self.grid[y][x+1]:
                         rain_rating+=0.5
                     else:
                         rain_rating+=1
@@ -249,7 +259,7 @@ class House(Building):
             self.design_rating = design_rating/design_total
         self.design_rating=self.design_rating**2   
         print(self.design_rating)
-        self.price=int((10**(self.design_rating*self.rain_rating*self.wind_rating)-2)*len(self.blocks))
+        self.price=int((10**(self.design_rating*self.rain_rating*self.wind_rating)-1)*len(self.blocks))
         print("$"+str(self.price))
 
 
@@ -263,6 +273,10 @@ exit_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((350, 425),
 back_buttons = [
     pygame_gui.elements.UIButton(relative_rect=pygame.Rect((50, 50), (100, 50)),text='Back',manager=managers["s"]),
 ]
+
+# Building
+build_textbox = pygame_gui.elements.UITextBox(relative_rect=pygame.Rect((700, 125), (200, 75)),html_text="Yo though <br>$100",manager=managers["b"])
+done_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((720, 305), (400, 300)),text='Is good now',manager=managers["b"])
 
 # Shop
 shop_textbox = pygame_gui.elements.UITextBox(relative_rect=pygame.Rect((200, 125), (200, 75)),html_text="Yo though <br>$100",manager=managers["s"])
@@ -294,7 +308,7 @@ while jump_out == False:
                 if event.key == pygame.K_LEFT:
                     if game.building.flyingBlock.x>0:
                         game.building.flyingBlock.x-=1
-                if event.key == pygame.K_DOWN:
+                if event.key == pygame.K_DOWN and game.money>0:
                     game.building.flyingBlock.land()
                 for i in range(len(game.building.holdings)):
                     if event.key == getattr(pygame,"K_"+str(i+1)):
@@ -304,19 +318,7 @@ while jump_out == False:
                         game.building.holdings[i], game.building.flyingBlock = (game.building.flyingBlock, game.building.holdings[i])
                         if game.building.flyingBlock == None:
                             game.building.newBlock()
-                if event.key == pygame.K_RETURN:
-                    game.building.flyingBlock=None
-                    game.building.rate()
-                    payment_button.text="Recieve $"+str(game.building.price)+"!"
-                    payment_button.rebuild()
-                    game.money+=game.building.price
-                    game.mode = "r"
-                    game.review_stage = 0
-                    ok_button.text="OK"
-                    ok_button.rebuild()
-                    rating_textbox.html_text=outOfTen(game.building.wind_rating)
-                    rating_textbox.rebuild()
-
+                
         if event.type == pygame.USEREVENT:
             if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
             
@@ -330,12 +332,22 @@ while jump_out == False:
                 if event.ui_element == build_button:
                     game.mode="b"
                     game.start()
+                if event.ui_element == done_button:
+                    game.building.flyingBlock=None
+                    game.building.rate()
+                    payment_button.text="Recieve $"+str(game.building.price)+"!"
+                    payment_button.rebuild()
+                    game.money+=game.building.price
+                    game.mode = "r"
+                    game.review_stage = 0
+                    ok_button.text="OK"
+                    ok_button.rebuild()
+                    rating_textbox.html_text=outOfTen(game.building.wind_rating)
+                    rating_textbox.rebuild()
+
                 if event.ui_element == payment_button:
                     game.mode=""
-                    menu_textbox.html_text="Yo though <br>$"+str(game.money)
-                    menu_textbox.rebuild()
-                    shop_textbox.html_text="Yo though <br>$"+str(game.money)
-                    shop_textbox.rebuild()
+                    game.updateMoneyTextboxes()
                 if event.ui_element == ok_button:
                     if game.review_stage==2:
                         game.mode="p"
@@ -355,10 +367,9 @@ while jump_out == False:
                         game.money-=game.bucketPrice
                         game.bucketPrice+=100
                         game.baskets += 1
-                    menu_textbox.html_text="Yo though <br>$"+str(game.money)
-                    menu_textbox.rebuild()
-                    shop_textbox.html_text="Yo though <br>$"+str(game.money)
-                    shop_textbox.rebuild()
+                    basket_button.text='Buy Bucket ($'+str(game.bucketPrice)+')'
+                    basket_button.rebuild()
+                    game.updateMoneyTextboxes()
         manager.process_events(event)
 
     manager.update(time_delta)
