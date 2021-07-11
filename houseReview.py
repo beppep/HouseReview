@@ -5,6 +5,7 @@ import random
 resolution = (1200,700)
 gridSize = 64
 topLeft = (20,20)
+difficulty= 1 # 0-1 but can go to 9
 
 pygame.init()
 clock = pygame.time.Clock()
@@ -116,7 +117,7 @@ class Game():
         self.building = None
 
     def start(self):
-        self.building = House(random.randint(6,10), random.randint(6,9), baskets=self.baskets)
+        self.building = Castle(random.randint(6,10), random.randint(6,9), baskets=self.baskets)
 
     def updateMoneyTextboxes(self):
         menu_textbox.html_text="Yo though <br>$"+str(game.money)
@@ -151,7 +152,7 @@ class Building():
             self.grid.append([None]*self.width)
         self.images = {}
         for i in self.blockNames:
-            image = loadImage("house/"+i+".png", gridSize) # fix this when adding castles
+            image = loadImage(self.pathName+"/"+i+".png", gridSize)
             self.images[i] = image
         self.newBlock(starter=True)
 
@@ -182,16 +183,13 @@ class Building():
                     self.holdings[i].draw()
 
 class House(Building):
-
+    pathName="house"
     starters = ["wall","leftwall","rightwall","door1"]
     blockNames = ["wall","leftwall","rightwall","window","door0","door1","leftroof","rightroof","roof","plateau"]
     blockWeights = [2,1,1,1,0.8,0.8,1,1,2,1]
 
     def __init__(self, w,h, baskets=0):
         super(House, self).__init__(w,h,baskets)
-        self.width = w
-        self.height = h
-        self.baskets = [None]*baskets
 
     def rate(self):
 
@@ -309,7 +307,98 @@ class House(Building):
             self.design_rating = design_rating/design_total
         self.design_rating=self.design_rating**4   
         print(self.design_rating)
-        self.price=int((10**(self.design_rating*self.rain_rating*self.wind_rating)-0.5)*len(self.blocks))
+        self.price=int((10**(self.design_rating*self.rain_rating*self.wind_rating)-difficulty)*len(self.blocks))
+        print("$"+str(self.price))
+class Castle(Building):
+    pathName="castle"
+    starters = ["wall","door1"]
+    blockNames = ["wall","door0","door1","roofwall","roof","window"]
+    blockWeights = [2,0.8,0.8,0.5,2,1]
+
+    def __init__(self, w,h, baskets=0):
+        super(Castle, self).__init__(w,h,baskets)
+
+    def rate(self):
+
+        # WIND RATING
+        self.wind_rating=1
+        print(self.wind_rating)
+
+        # PRECIPATION RATING
+        rain_rating = 0
+        rain_total = 0
+        for x in range(self.width):
+            for y in range(self.height):
+                if(self.grid[y][x]==None):
+                    continue
+                if(self.grid[y][x].name in ["roof"]):
+                    rain_rating+=1
+                rain_total+=1
+                break
+                    
+        self.rain_rating=0.5
+        if rain_total>0:
+            self.rain_rating = rain_rating/rain_total
+        print(self.rain_rating)
+
+        # DESIGNER RATING
+        def cccf(bad=[],okay=[],good=[],fallback=1): #createCheckConnectionFunction
+            def checkConnection(block):
+                if(block==None):
+                    blockType="air"
+                else:
+                    blockType=block.name
+                if blockType in good:
+                    return 1
+                elif blockType in okay:
+                    return 0.5
+                elif blockType in bad:
+                    return 0
+                else:
+                    return fallback
+            return checkConnection
+        
+        roofRight=cccf(good=["roofwall","roof","air"],okay=["wall","window"],fallback=0)
+        roofwallRight=cccf(good=["roofwall","roof"],okay=["air"],fallback=0)
+        roofDown=cccf(bad=["door1","roof","air"])
+        windowDown=cccf(bad=["door1","roof"],okay=["air"])
+        wallRight=cccf(bad=["wallroof"],okay=["roof"])
+        wallDown=cccf(bad=["door1","roof"])
+
+        doorheadRight=cccf(good=["door0","air","window","wall"],fallback=0)
+        doorRight=cccf(good=["door1","air","window","wall"],fallback=0)
+        doorheadDown=cccf(good=["door1"],okay=["air"],fallback=0)
+        doorDown=cccf(good=["door1","air"],fallback=0)
+        connectionHash={
+            "wall":[wallRight, wallDown], # Tile: [Right, Down]
+            "window":[wallRight,windowDown],
+            "door0":[doorheadRight,doorheadDown],
+            "door1":[doorRight,doorDown],
+            "roofwall":[roofwallRight,windowDown],
+            "roof":[roofRight,windowDown],
+        }
+        design_total=0
+        design_rating=0
+        for x in range(self.width-1):
+            for y in range(self.height):
+                if(self.grid[y][x]):
+                    if(y==self.height-1):
+                        down=None
+                    else:
+                        down=self.grid[y+1][x]
+                    design_rating+=connectionHash[self.grid[y][x].name][1](down)
+                    design_total+=1
+
+                    right=self.grid[y][x+1]
+                    if(right):
+                        design_rating+=connectionHash[self.grid[y][x].name][0](right)
+                        design_total+=1
+        self.design_rating=0.8
+        if design_total>0:
+            self.design_rating = design_rating/design_total
+        self.design_rating=self.design_rating**4   
+        print(self.design_rating)
+        self.price=int((10**(self.design_rating*self.rain_rating*self.wind_rating)-difficulty)*len(self.blocks))
         print("$"+str(self.price))
 
 
