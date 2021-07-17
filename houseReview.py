@@ -5,6 +5,7 @@ import random
 resolution = (1200,700)
 gridSize = 64
 topLeft = (20,20)
+difficulty= 1 # 0-1 but can go to 9
 
 pygame.init()
 clock = pygame.time.Clock()
@@ -78,28 +79,45 @@ class Game():
         ("Looks good!", 6,8),
         ("Too much wind!", 3,5),
         ("This is really bad.", 2,4),
-        ("Uh...", 0,5),
+        ("Uh...", -1,5),
         ("Okay...", 3,7),
+        ("Doesn't handle wind very well.", 3,6),
         ("Good wind protection.", 7,10),
-        ("This is good.", 7,9)
+        ("This is good.", 7,9),
     ]
     rain_quotes = [
-        ("Looks good!", 6,8),
-        ("Too much wind!", 3,5),
-        ("This is really bad.", 2,4),
-        ("Uh...", 0,5),
-        ("Okay...", 3,7),
-        ("Good wind protection.", 7,10),
-        ("This is good.", 7,9)
+        ("Precipitation check clear!", 9,10),
+        ("Subpar :(", 2,5),
+        ("Okay moisture level.", 5,7),
+        ("Too much rain!", 3,5),
+        ("Could not handle a light drizzle!", 2,4),
+        ("You forgot the roof...", -1,4),
+        ("I'm drowning!", 0,4),
+        ("Oh no...", 1,5),
+        ("Decent", 6,8),
+        ("Good waterproofing.", 8,10),
+        ("Could withstand a moonsoon!", 9,10),
+        ("This is a house not a swimming pool", 2,4),
     ]
     design_quotes = [
-        ("This line of work", 6,8),
-        ("Too much wind!", 3,5),
-        ("This is really bad.", 2,4),
-        ("Uh...", 0,5),
-        ("Okay...", 3,7),
-        ("Good wind protection.", 7,10),
-        ("This is good.", 7,9)
+        ("This line of work is not for you.", 0,4),
+        ("Is this even a building?", -1,4),
+        ("A tremendous waste of resources.", 0,5.5),
+        ("Awful.", 1,5),
+        ("Not connected enough!", 2,4),
+        ("Cheaply constructed.", 3,6),
+        ("Could use improvements.", 4,7),
+        ("At least you tried… ", 4,6),
+        ("Not quite my taste.", 3,6),
+        ("Good design.", 7,8),
+        ("You have keen eyes.", 7,8),
+        ("More colour, more everything.", 6.5,7),
+        ("Excellent connections.", 8,9),
+        ("Competent craftsmanship.", 7,8),
+        ("Wonderfully innovative.", 8.5,10),
+        ("A masterclass in interior design!", 9.3,9.7),
+        ("Can I buy it?", 9.5,10),
+
     ]
 
     def __init__(self):
@@ -111,7 +129,7 @@ class Game():
         self.building = None
 
     def start(self):
-        self.building = House(random.randint(6,10), random.randint(6,9), baskets=self.baskets)
+        self.building = Castle(random.randint(6,10), random.randint(6,9), baskets=self.baskets)
 
     def updateMoneyTextboxes(self):
         menu_textbox.html_text="Yo though <br>$"+str(game.money)
@@ -122,9 +140,9 @@ class Game():
         shop_textbox.rebuild()
 
     def speak(self, quotes, rating):
-        available = [quote[0] for quote in quotes if (quote[1]<rating*10 and rating*10<quote[2])]
+        available = [quote[0] for quote in quotes if (quote[1]<rating*10 and rating*10<=quote[2])]
         print("i can say ",len(available))
-        return " ".join(random.sample(available, random.randint(1,len(available))))
+        return " ".join(random.sample(available, random.randint(1,random.randint(1,len(available)))))
 
     def draw(self):
         if self.building:
@@ -146,7 +164,7 @@ class Building():
             self.grid.append([None]*self.width)
         self.images = {}
         for i in self.blockNames:
-            image = loadImage("house/"+i+".png", gridSize) # fix this when adding castles
+            image = loadImage(self.pathName+"/"+i+".png", gridSize)
             self.images[i] = image
         self.newBlock(starter=True)
 
@@ -177,16 +195,13 @@ class Building():
                     self.holdings[i].draw()
 
 class House(Building):
-
+    pathName="house"
     starters = ["wall","leftwall","rightwall","door1"]
     blockNames = ["wall","leftwall","rightwall","window","door0","door1","leftroof","rightroof","roof","plateau"]
     blockWeights = [2,1,1,1,0.8,0.8,1,1,2,1]
 
     def __init__(self, w,h, baskets=0):
         super(House, self).__init__(w,h,baskets)
-        self.width = w
-        self.height = h
-        self.baskets = [None]*baskets
 
     def rate(self):
 
@@ -265,8 +280,8 @@ class House(Building):
         roofRight=cccf(good=["rightroof","roof","air"],fallback=0.5)
         wallRight=cccf(bad=["leftroof","leftwall"],okay=["roof","rightroof"])
         wallDown=cccf(bad=["door1","leftroof","rightroof","leftwall","rightwall"])
-        leftwallDown=cccf(good=["air","leftwall","plateau"],fallback=0)
-        rightwallDown=cccf(good=["air","rightwall","plateau"],fallback=0)
+        leftwallDown=cccf(good=["air","leftwall","plateau","roof"],fallback=0)
+        rightwallDown=cccf(good=["air","rightwall","plateau","roof"],fallback=0)
         rightRight=cccf(good=["leftwall","leftroof","air"],fallback=0)
         windowDown=cccf(bad=["door1","leftroof","rightroof","leftwall","rightwall"],okay=["air"])
         doorheadDown=cccf(good=["door1"],okay=["air","plateau"],fallback=0)
@@ -299,12 +314,103 @@ class House(Building):
                     if(right):
                         design_rating+=connectionHash[self.grid[y][x].name][0](right)
                         design_total+=1
-        self.design_rating=0.5
+        self.design_rating=0.8
         if design_total>0:
             self.design_rating = design_rating/design_total
-        self.design_rating=self.design_rating**2   
+        self.design_rating=self.design_rating**4   
         print(self.design_rating)
-        self.price=int((10**(self.design_rating*self.rain_rating*self.wind_rating)-1)*len(self.blocks))
+        self.price=int((10**(self.design_rating*self.rain_rating*self.wind_rating)-difficulty)*len(self.blocks))
+        print("$"+str(self.price))
+class Castle(Building):
+    pathName="castle"
+    starters = ["wall","door1"]
+    blockNames = ["wall","door0","door1","roofwall","roof","window"]
+    blockWeights = [2,0.8,0.8,0.5,2,1]
+
+    def __init__(self, w,h, baskets=0):
+        super(Castle, self).__init__(w,h,baskets)
+
+    def rate(self):
+
+        # WIND RATING
+        self.wind_rating=1
+        print(self.wind_rating)
+
+        # PRECIPATION RATING
+        rain_rating = 0
+        rain_total = 0
+        for x in range(self.width):
+            for y in range(self.height):
+                if(self.grid[y][x]==None):
+                    continue
+                if(self.grid[y][x].name in ["roof"]):
+                    rain_rating+=1
+                rain_total+=1
+                break
+                    
+        self.rain_rating=0.5
+        if rain_total>0:
+            self.rain_rating = rain_rating/rain_total
+        print(self.rain_rating)
+
+        # DESIGNER RATING
+        def cccf(bad=[],okay=[],good=[],fallback=1): #createCheckConnectionFunction
+            def checkConnection(block):
+                if(block==None):
+                    blockType="air"
+                else:
+                    blockType=block.name
+                if blockType in good:
+                    return 1
+                elif blockType in okay:
+                    return 0.5
+                elif blockType in bad:
+                    return 0
+                else:
+                    return fallback
+            return checkConnection
+        
+        roofRight=cccf(good=["roofwall","roof","air"],okay=["wall","window"],fallback=0)
+        roofwallRight=cccf(good=["roofwall","roof"],okay=["air"],fallback=0)
+        roofDown=cccf(bad=["door1","roof","air"])
+        windowDown=cccf(bad=["door1","roof"],okay=["air"])
+        wallRight=cccf(bad=["wallroof"],okay=["roof"])
+        wallDown=cccf(bad=["door1","roof"])
+
+        doorheadRight=cccf(good=["door0","air","window","wall"],fallback=0)
+        doorRight=cccf(good=["door1","air","window","wall"],fallback=0)
+        doorheadDown=cccf(good=["door1"],okay=["air"],fallback=0)
+        doorDown=cccf(good=["door1","air"],fallback=0)
+        connectionHash={
+            "wall":[wallRight, wallDown], # Tile: [Right, Down]
+            "window":[wallRight,windowDown],
+            "door0":[doorheadRight,doorheadDown],
+            "door1":[doorRight,doorDown],
+            "roofwall":[roofwallRight,windowDown],
+            "roof":[roofRight,windowDown],
+        }
+        design_total=0
+        design_rating=0
+        for x in range(self.width-1):
+            for y in range(self.height):
+                if(self.grid[y][x]):
+                    if(y==self.height-1):
+                        down=None
+                    else:
+                        down=self.grid[y+1][x]
+                    design_rating+=connectionHash[self.grid[y][x].name][1](down)
+                    design_total+=1
+
+                    right=self.grid[y][x+1]
+                    if(right):
+                        design_rating+=connectionHash[self.grid[y][x].name][0](right)
+                        design_total+=1
+        self.design_rating=0.8
+        if design_total>0:
+            self.design_rating = design_rating/design_total
+        self.design_rating=self.design_rating**4   
+        print(self.design_rating)
+        self.price=int((10**(self.design_rating*self.rain_rating*self.wind_rating)-difficulty)*len(self.blocks))
         print("$"+str(self.price))
 
 
@@ -378,8 +484,9 @@ while jump_out == False:
                 if event.ui_element == exit_button:
                     jump_out = True
                 if event.ui_element == build_button:
-                    game.mode="b"
-                    game.start()
+                    if game.money:
+                        game.mode="b"
+                        game.start()
                 if event.ui_element == done_button:
                     game.building.flyingBlock=None
                     game.building.rate()
