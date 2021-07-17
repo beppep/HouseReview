@@ -33,6 +33,17 @@ def outOfTen(rating):
         rating = int(rating)
     return str(rating)+"/10"
 
+class Sound():
+    v=1
+    pygame.mixer.init(buffer=32)
+    hitSound = pygame.mixer.Sound("data/sound/soundeffect2.wav")
+    lickSound = pygame.mixer.Sound("data/sound/lickeffect.wav")
+    lickSound.set_volume(v*0.3)
+    
+    pygame.mixer.music.load("data/sound/music.wav") #must be wav 16bit and stuff?
+    pygame.mixer.music.set_volume(v*0.1)
+    pygame.mixer.music.play(-1)
+
 class Block():
 
     def __init__(self, x, y, name, image):
@@ -42,6 +53,7 @@ class Block():
         self.image = image
 
     def land(self):
+        Sound.hitSound.play()
         game.money-=1
         game.updateMoneyTextboxes()
         highest = game.building.height
@@ -325,7 +337,6 @@ payment_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((resolut
 
 game = Game()
 
-clock = pygame.time.Clock()
 jump_out=False
 while jump_out == False:
     time_delta = clock.tick(60)/1000.0
@@ -337,14 +348,17 @@ while jump_out == False:
             if game.building:
                 if event.key == pygame.K_RIGHT:
                     if game.building.flyingBlock.x<game.building.width-1:
+                        Sound.lickSound.play()
                         game.building.flyingBlock.x+=1
                 if event.key == pygame.K_LEFT:
                     if game.building.flyingBlock.x>0:
+                        Sound.lickSound.play()
                         game.building.flyingBlock.x-=1
-                if event.key == pygame.K_DOWN and game.money>0:
+                if event.key == pygame.K_DOWN and game.money>=1:
                     game.building.flyingBlock.land()
                 for i in range(len(game.building.holdings)):
                     if event.key == getattr(pygame,"K_"+str(i+1)):
+                        Sound.lickSound.play()
                         if game.building.holdings[i]:
                             game.building.holdings[i].x, game.building.holdings[i].y = (game.building.flyingBlock.x, game.building.flyingBlock.y)
                         game.building.flyingBlock.x, game.building.flyingBlock.y = (game.building.width+1+2*i, 0)
@@ -354,7 +368,8 @@ while jump_out == False:
                 
         if event.type == pygame.USEREVENT:
             if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
-            
+                
+                Sound.hitSound.play()
                 #buttons
                 if event.ui_element in back_buttons:
                     game.mode=""
