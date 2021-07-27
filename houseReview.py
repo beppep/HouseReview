@@ -4,7 +4,7 @@ import random
 
 resolution = (1200,700)
 gridSize = 64
-topLeft = (20,20)
+topLeft = (20,20+gridSize)
 difficulty= 1 # 0-1 but can go to 9
 
 pygame.init()
@@ -55,7 +55,7 @@ class Block():
 
     def land(self):
         Sound.hitSound.play()
-        game.money-=1
+        game.money-=game.building.blockPrice
         game.updateMoneyTextboxes()
         highest = game.building.height
         for i in game.building.blocks:
@@ -65,6 +65,7 @@ class Block():
         game.building.blocks.append(self)
         game.building.grid[self.y][self.x]=self
         game.building.newBlock(self.x)
+        print(game.building.grid)
 
     def draw(self):
         game_display.blit(self.image, (self.x*gridSize+topLeft[0], self.y*gridSize+topLeft[1]))
@@ -129,7 +130,7 @@ class Game():
         self.building = None
 
     def start(self):
-        self.building = Castle(random.randint(6,10), random.randint(6,9), baskets=self.baskets)
+        self.building = House(random.randint(6,10), random.randint(6,9), baskets=self.baskets)
 
     def updateMoneyTextboxes(self):
         menu_textbox.html_text="Yo though <br>$"+str(game.money)
@@ -174,7 +175,7 @@ class Building():
         else:
             name = random.choices(self.blockNames, weights = self.blockWeights, k = 1)[0]
         img = self.images[name]
-        self.flyingBlock = Block(x,0, name, img)
+        self.flyingBlock = Block(x,-1, name, img)
 
 
 
@@ -195,6 +196,7 @@ class Building():
                     self.holdings[i].draw()
 
 class House(Building):
+    blockPrice = 1
     pathName="house"
     starters = ["wall","leftwall","rightwall","door1"]
     blockNames = ["wall","leftwall","rightwall","window","door0","door1","leftroof","rightroof","roof","plateau"]
@@ -322,6 +324,7 @@ class House(Building):
         self.price=int((10**(self.design_rating*self.rain_rating*self.wind_rating)-difficulty)*len(self.blocks))
         print("$"+str(self.price))
 class Castle(Building):
+    blockPrice = 2
     pathName="castle"
     starters = ["wall","door1"]
     blockNames = ["wall","door0","door1","roofwall","roof","window"]
@@ -333,7 +336,30 @@ class Castle(Building):
     def rate(self):
 
         # WIND RATING
-        self.wind_rating=1
+        wind_rating = 0
+        wind_total = 0
+        for x in range(self.width):
+            for y in range(len(self.grid)):
+                if self.grid[y][x]:
+                    if x==0 or not self.grid[y][x-1]:
+                        if (self.grid[y][x].name in ["door1","door0"]):
+                            pass
+                        elif self.grid[y][x].name in []:
+                            wind_rating+=0.5
+                        else:
+                            wind_rating+=1
+                        wind_total+=1
+                    if x==self.width-1 or not self.grid[y][x+1]:
+                        if (self.grid[y][x].name in ["door1","door0"]):
+                            pass
+                        elif self.grid[y][x].name in []:
+                            wind_rating+=0.5
+                        else:
+                            wind_rating+=1
+                        wind_total+=1
+        self.wind_rating=0.5
+        if wind_total>0:
+            self.wind_rating = wind_rating/wind_total
         print(self.wind_rating)
 
         # PRECIPATION RATING
@@ -460,8 +486,9 @@ while jump_out == False:
                     if game.building.flyingBlock.x>0:
                         Sound.lickSound.play()
                         game.building.flyingBlock.x-=1
-                if event.key == pygame.K_DOWN and game.money>=1:
-                    game.building.flyingBlock.land()
+                if event.key == pygame.K_DOWN:
+                    if game.money>=1 and not game.building.grid[0][game.building.flyingBlock.x]: #blockPrice
+                        game.building.flyingBlock.land()
                 for i in range(len(game.building.holdings)):
                     if event.key == getattr(pygame,"K_"+str(i+1)):
                         Sound.lickSound.play()
