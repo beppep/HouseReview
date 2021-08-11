@@ -5,7 +5,7 @@ import random
 resolution = (1200,700)
 gridSize = 64
 topLeft = (20,20+gridSize)
-difficulty= 1 # 0-1 but can go to 9
+difficulty= 2 # 0-1 but can go to 9
 
 pygame.init()
 clock = pygame.time.Clock()
@@ -146,11 +146,6 @@ class Game():
         return " ".join(random.sample(available, random.randint(1,random.randint(1,len(available)))))
 
     def draw(self):
-        # get
-        lolPosition = pygame.mouse.get_pos()
-        if self.mode =="s" and abs(lolPosition[0]-450)<100 and abs(lolPosition[1]-300)<25:
-            pygame.mouse.set_pos(349, 274)
-        # trolled
         if self.building:
             self.building.draw()
         if self.mode=="r":
