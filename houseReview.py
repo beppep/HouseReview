@@ -2,15 +2,19 @@ import pygame
 import pygame_gui
 import random
 
-resolution = (1200,700)
+#saker att fixa:
+#man kan sälja inget (big exploti med slott)
+#man kan bygga slott i vanilla
+
+resolution = (1300,700)
 gridSize = 64
 topLeft = (20,20+gridSize)
-difficulty= 2 # 0-1 but can go to 9
+difficulty= 1 # 0-1 but can go to 9
 
 pygame.init()
 clock = pygame.time.Clock()
 game_display = pygame.display.set_mode(resolution)#, pygame.FULLSCREEN)
-pygame.display.set_caption('HouseReview!')
+pygame.display.set_caption('House Review!')
 pygame.display.set_icon(pygame.image.load("data/house/window.png"))
 
 managers={
@@ -20,6 +24,7 @@ managers={
     "p":pygame_gui.UIManager(resolution), #Payment
     "s":pygame_gui.UIManager(resolution), #Shop
 }
+
 
 def loadImage(name,r,r2=None):
     if not r2:
@@ -65,72 +70,74 @@ class Block():
         game.building.blocks.append(self)
         game.building.grid[self.y][self.x]=self
         game.building.newBlock(self.x)
-        print(game.building.grid)
+        #print(game.building.grid)
 
     def draw(self):
         game_display.blit(self.image, (self.x*gridSize+topLeft[0], self.y*gridSize+topLeft[1]))
 
 class Game():
 
-    wind_image = loadImage("characters/mrwind.png", resolution[1])
+    wind_images = [loadImage("characters/mrwind.png", resolution[1]),loadImage("characters/wind2.png", resolution[1])]
     rain_image = loadImage("characters/prec.png", resolution[1])
     design_image=loadImage("characters/designer.png", resolution[1])
 
     wind_quotes = [
-        ("Looks good!", 6,8),
-        ("Too much wind!", 3,5),
-        ("This is really bad.", 2,4),
-        ("Uh...", -1,5),
+        ("Looks good!", 6,9),
+        ("Too much wind!", 1,5),
+        ("This is really bad.", 0,4),
+        ("Uh...", 0,5),
         ("Okay...", 3,7),
         ("Doesn't handle wind very well.", 3,6),
         ("Good wind protection.", 7,10),
-        ("This is good.", 7,9),
+        ("This is good.", 7,10),
+        ("No walls!?", 0,3),
     ]
     rain_quotes = [
         ("Precipitation check clear!", 9,10),
         ("Subpar :(", 2,5),
         ("Okay moisture level.", 5,7),
         ("Too much rain!", 3,5),
-        ("Could not handle a light drizzle!", 2,4),
-        ("You forgot the roof...", -1,4),
+        ("Could not handle a light drizzle!", 1,4),
+        ("You forgot the roof...", 0,4),
         ("I'm drowning!", 0,4),
         ("Oh no...", 1,5),
         ("Decent", 6,8),
         ("Good waterproofing.", 8,10),
         ("Could withstand a moonsoon!", 9,10),
-        ("This is a house not a swimming pool", 2,4),
+        ("This is a house not a swimming pool", 0,4),
     ]
     design_quotes = [
-        ("This line of work is not for you.", 0,4),
-        ("Is this even a building?", -1,4),
-        ("A tremendous waste of resources.", 0,5.5),
+        ("This line of work is not for you.", 1,4),
+        ("Is this even a building?", 0,4),
+        ("A tremendous waste of resources.", 1,4.5),
         ("Awful.", 1,5),
         ("Not connected enough!", 2,4),
         ("Cheaply constructed.", 3,6),
         ("Could use improvements.", 4,7),
-        ("At least you tried… ", 4,6),
-        ("Not quite my taste.", 3,6),
-        ("Good design.", 7,8),
-        ("You have keen eyes.", 7,8),
-        ("More colour, more everything.", 6.5,7),
-        ("Excellent connections.", 8,9),
-        ("Competent craftsmanship.", 7,8),
+        ("At least you tried… ", 2,5),
+        ("Not quite my taste.", 5,8),
+        ("Good design.", 6,9.5),
+        ("You have keen eyes.", 7,9),
+        ("More colour, more everything.", 6,7),
+        ("Excellent connections.", 7,9),
+        ("Competent craftsmanship.", 6,8),
         ("Wonderfully innovative.", 8.5,10),
-        ("A masterclass in interior design!", 9.3,9.7),
+        ("A masterclass in interior design!", 9.3,10),
         ("Can I buy it?", 9.5,10),
 
     ]
 
     def __init__(self):
-        self.money = 100
+        self.money = 69
         self.mode = ""
         self.review_stage = 0
         self.baskets = 0
         self.bucketPrice = 100
         self.building = None
 
-    def start(self):
-        self.building = House(random.randint(6,10), random.randint(6,9), baskets=self.baskets)
+    def start(self, buildingType):
+        self.building = buildingType(random.randint(6,10), random.randint(6,9), baskets=self.baskets)
+        self.wind_image = random.choice(self.wind_images)
 
     def updateMoneyTextboxes(self):
         menu_textbox.html_text="Yo though <br>$"+str(game.money)
@@ -141,7 +148,7 @@ class Game():
         shop_textbox.rebuild()
 
     def speak(self, quotes, rating):
-        available = [quote[0] for quote in quotes if (quote[1]<rating*10 and rating*10<=quote[2])]
+        available = [quote[0] for quote in quotes if (quote[1]<=rating*10 and rating*10<=quote[2])]
         print("i can say ",len(available))
         return " ".join(random.sample(available, random.randint(1,random.randint(1,len(available)))))
 
@@ -198,7 +205,7 @@ class Building():
 class House(Building):
     blockPrice = 1
     pathName="house"
-    starters = ["wall","leftwall","rightwall","door1"]
+    starters = ["wall","leftwall","rightwall","door1","plateau"]
     blockNames = ["wall","leftwall","rightwall","window","door0","door1","leftroof","rightroof","roof","plateau"]
     blockWeights = [2,1,1,1,0.8,0.8,1,1,2,1]
 
@@ -326,9 +333,9 @@ class House(Building):
 class Castle(Building):
     blockPrice = 2
     pathName="castle"
-    starters = ["wall","door1"]
-    blockNames = ["wall","door0","door1","roofwall","roof","window"]
-    blockWeights = [2,0.8,0.8,0.5,2,1]
+    starters = ["wall","door1","leftwall","rightwall"]
+    blockNames = ["wall","leftwall","rightwall","door0","door1","roofwall","roof","flag","window"]
+    blockWeights = [2,1,1,0.8,0.8,1,2,0.5,1]
 
     def __init__(self, w,h, baskets=0):
         super(Castle, self).__init__(w,h,baskets)
@@ -342,20 +349,20 @@ class Castle(Building):
             for y in range(len(self.grid)):
                 if self.grid[y][x]:
                     if x==0 or not self.grid[y][x-1]:
-                        if (self.grid[y][x].name in ["door1","door0"]):
-                            pass
-                        elif self.grid[y][x].name in []:
-                            wind_rating+=0.5
-                        else:
+                        if (self.grid[y][x].name in ["leftwall","roof","flag"]):
                             wind_rating+=1
+                        elif self.grid[y][x].name in ["door0","door1"]:
+                            pass
+                        else:
+                            wind_rating+=0.5
                         wind_total+=1
                     if x==self.width-1 or not self.grid[y][x+1]:
-                        if (self.grid[y][x].name in ["door1","door0"]):
-                            pass
-                        elif self.grid[y][x].name in []:
-                            wind_rating+=0.5
-                        else:
+                        if (self.grid[y][x].name in ["rightwall","roof","flag"]):
                             wind_rating+=1
+                        elif self.grid[y][x].name in ["door1","door0"]:
+                            pass
+                        else:
+                            wind_rating+=0.5
                         wind_total+=1
         self.wind_rating=0.5
         if wind_total>0:
@@ -369,7 +376,7 @@ class Castle(Building):
             for y in range(self.height):
                 if(self.grid[y][x]==None):
                     continue
-                if(self.grid[y][x].name in ["roof"]):
+                if(self.grid[y][x].name in ["roof","flag"]):
                     rain_rating+=1
                 rain_total+=1
                 break
@@ -386,6 +393,8 @@ class Castle(Building):
                     blockType="air"
                 else:
                     blockType=block.name
+                    if blockType == "flag":
+                        blockType = "roof"
                 if blockType in good:
                     return 1
                 elif blockType in okay:
@@ -396,24 +405,29 @@ class Castle(Building):
                     return fallback
             return checkConnection
         
-        roofRight=cccf(good=["roofwall","roof","air"],okay=["wall","window"],fallback=0)
-        roofwallRight=cccf(good=["roofwall","roof"],okay=["air"],fallback=0)
-        roofDown=cccf(bad=["door1","roof","air"])
-        windowDown=cccf(bad=["door1","roof"],okay=["air"])
-        wallRight=cccf(bad=["wallroof"],okay=["roof"])
-        wallDown=cccf(bad=["door1","roof"])
+        roofRight=cccf(good=["roofwall","roof","air","leftwall"],okay=["wall","window","rightwall"],fallback=0)
+        roofwallRight=cccf(good=["roofwall","roof","air"],okay=["wall","window","rightwall"],fallback=0)
+        roofDown=cccf(bad=["door1","roof"],okay=["air"])
+        windowDown=cccf(bad=["door1","roof"],okay=["air","leftwall","rightwall"])
+        wallRight=cccf(okay=["roof","roofwall","leftwall","air"])
+        wallDown=cccf(bad=["door1","roof"],okay=["leftwall","rightwall"])
+        rightwallDown=cccf(good=["rightwall","air"],okay=["wall","dindow","door0"],fallback=0)
+        leftwallDown=cccf(good=["leftwall","air"],okay=["wall","dindow","door0"],fallback=0)
 
-        doorheadRight=cccf(good=["door0","air","window","wall"],fallback=0)
-        doorRight=cccf(good=["door1","air","window","wall"],fallback=0)
+        doorheadRight=cccf(good=["door0","air","window","wall","wallright"],okay=["roofwall"],fallback=0)
+        doorRight=cccf(good=["door1","air","window","wall","wallright"],okay=["roofwall"],fallback=0)
         doorheadDown=cccf(good=["door1"],okay=["air"],fallback=0)
         doorDown=cccf(good=["door1","air"],fallback=0)
         connectionHash={
             "wall":[wallRight, wallDown], # Tile: [Right, Down]
+            "rightwall":[roofRight, rightwallDown],
+            "leftwall":[wallRight, leftwallDown],
             "window":[wallRight,windowDown],
             "door0":[doorheadRight,doorheadDown],
             "door1":[doorRight,doorDown],
-            "roofwall":[roofwallRight,windowDown],
-            "roof":[roofRight,windowDown],
+            "roofwall":[roofwallRight,roofDown],
+            "roof":[roofRight,roofDown],
+            "flag":[roofRight,roofDown],
         }
         design_total=0
         design_rating=0
@@ -442,8 +456,9 @@ class Castle(Building):
 
 
 # Main Menu
-menu_textbox = pygame_gui.elements.UITextBox(relative_rect=pygame.Rect((20, 25), (200, 75)),html_text="Yo though <br>$100",manager=managers[""])
+menu_textbox = pygame_gui.elements.UITextBox(relative_rect=pygame.Rect((20, 25), (200, 75)),html_text="Yo though <br>$69",manager=managers[""])
 build_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((350, 275), (200, 50)),text='Build Buildings',manager=managers[""])
+castle_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((575, 275), (200, 50)),text='Build Castle',manager=managers[""]) # new manager?
 shop_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((350, 350), (200, 50)),text='Buy Baskets',manager=managers[""])
 exit_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((350, 425), (200, 50)),text='Bye Bye',manager=managers[""])
 
@@ -452,12 +467,13 @@ back_buttons = [
 ]
 
 # Building
-build_textbox = pygame_gui.elements.UITextBox(relative_rect=pygame.Rect((700, 125), (200, 75)),html_text="Yo though <br>$100",manager=managers["b"])
+build_textbox = pygame_gui.elements.UITextBox(relative_rect=pygame.Rect((700, 125), (200, 75)),html_text="Yo though <br>$69",manager=managers["b"])
 done_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((720, 305), (400, 300)),text='Is good now',manager=managers["b"])
 
 # Shop
-shop_textbox = pygame_gui.elements.UITextBox(relative_rect=pygame.Rect((200, 125), (200, 75)),html_text="Yo though <br>$100",manager=managers["s"])
+shop_textbox = pygame_gui.elements.UITextBox(relative_rect=pygame.Rect((200, 125), (200, 75)),html_text="Yo though <br>$69",manager=managers["s"])
 basket_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((350, 275), (200, 50)),text='Buy Bucket ($100)',manager=managers["s"])
+plateau_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((350, 325), (200, 50)),text='Unlock Platform ($50)',manager=managers["s"])
 
 # Review
 review_textbox = pygame_gui.elements.UITextBox(relative_rect=pygame.Rect((700, 25), (300, 175)),html_text="This house is horrendous! I can barely accept this work.",manager=managers["r"])
@@ -487,7 +503,7 @@ while jump_out == False:
                         Sound.lickSound.play()
                         game.building.flyingBlock.x-=1
                 if event.key == pygame.K_DOWN:
-                    if game.money>=1 and not game.building.grid[0][game.building.flyingBlock.x]: #blockPrice
+                    if game.money>=game.building.blockPrice and not game.building.grid[0][game.building.flyingBlock.x]:
                         game.building.flyingBlock.land()
                 for i in range(len(game.building.holdings)):
                     if event.key == getattr(pygame,"K_"+str(i+1)):
@@ -511,10 +527,14 @@ while jump_out == False:
                 if event.ui_element == exit_button:
                     jump_out = True
                 if event.ui_element == build_button:
-                    if game.money:
+                    if game.money>=House.blockPrice:
                         game.mode="b"
-                        game.start()
-                if event.ui_element == done_button:
+                        game.start(House)
+                if event.ui_element == castle_button:
+                    if game.money>=Castle.blockPrice:
+                        game.mode="b"
+                        game.start(Castle)
+                if event.ui_element == done_button and len(game.building.blocks):
                     game.building.flyingBlock=None
                     game.building.rate()
                     payment_button.text="Recieve $"+str(game.building.price)+"!"
@@ -556,6 +576,12 @@ while jump_out == False:
                     basket_button.text='Buy Bucket ($'+str(game.bucketPrice)+')'
                     basket_button.rebuild()
                     game.updateMoneyTextboxes()
+                if event.ui_element == plateau_button:
+                    if game.money>=50:
+                        game.money-=50
+                    #basket_button.text='Buy Bucket ($'+str(game.bucketPrice)+')'
+                    #basket_button.rebuild()
+                    #game.updateMoneyTextboxes()
         manager.process_events(event)
 
     manager.update(time_delta)
@@ -572,3 +598,7 @@ while jump_out == False:
 
 pygame.quit()
 quit()
+
+
+# 193$ arthur 5 buckets diff 1
+# 122$ arthur 0 buckets diff 1
