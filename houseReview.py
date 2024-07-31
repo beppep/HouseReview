@@ -2,6 +2,7 @@ import pygame
 import pygame_gui
 import random
 import math # for prod lmao
+import os
 
 resolution = (1300,700)
 gridSize = 64
@@ -13,7 +14,7 @@ pygame.init()
 clock = pygame.time.Clock()
 game_display = pygame.display.set_mode(resolution)#, pygame.FULLSCREEN)
 pygame.display.set_caption('House Review!')
-pygame.display.set_icon(pygame.image.load("data/house/window.png"))
+pygame.display.set_icon(pygame.image.load(os.path.join("houseReviewData","house","window.png")))
 
 managers={
     "":pygame_gui.UIManager(resolution), #Main menu
@@ -27,7 +28,7 @@ managers={
 def loadImage(name,r,r2=None):
     if not r2:
         r2=r
-    image = pygame.image.load("data/"+name)
+    image = pygame.image.load(os.path.join("houseReviewData",name))
     image = pygame.transform.scale(image, (r, r2))
     return image
 
@@ -40,11 +41,11 @@ def outOfTen(rating, outOfWhat=10):
 class Sound():
     v=1
     pygame.mixer.init(buffer=32)
-    hitSound = pygame.mixer.Sound("data/sound/soundeffect2.wav")
-    lickSound = pygame.mixer.Sound("data/sound/lickeffect.wav")
+    hitSound = pygame.mixer.Sound(os.path.join("data","sound","soundeffect2.wav"))
+    lickSound = pygame.mixer.Sound(os.path.join("data","sound","lickeffect.wav"))
     lickSound.set_volume(v*0.3)
     
-    pygame.mixer.music.load("data/sound/music.wav") #must be wav 16bit and stuff?
+    pygame.mixer.music.load(os.path.join("data","sound","music.wav")) #must be wav 16bit and stuff?
     pygame.mixer.music.set_volume(v*0.1)
     pygame.mixer.music.play(-1)
 
