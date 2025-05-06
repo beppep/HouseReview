@@ -12,9 +12,9 @@ rating_decimals = 0
 
 pygame.init()
 clock = pygame.time.Clock()
-game_display = pygame.display.set_mode(resolution)#, pygame.FULLSCREEN)
+game_display = pygame.display.set_mode(resolution)#, pygame.FULLSCREEN) # LAUNCHER: remove argument. no arguments is correct i think
 pygame.display.set_caption('House Review!')
-pygame.display.set_icon(pygame.image.load(os.path.join("houseReviewData","house","window.png")))
+pygame.display.set_icon(pygame.image.load(os.path.join("data","house","window.png"))) # LAUNCHER: rename data to HouseReviewData
 
 managers={
     "":pygame_gui.UIManager(resolution), #Main menu
@@ -24,11 +24,13 @@ managers={
     "s":pygame_gui.UIManager(resolution), #Shop
 }
 
+myfont = pygame.font.SysFont('Calibri', 100)
+myfont2 = pygame.font.SysFont('Calibri', 20)
 
 def loadImage(name,r,r2=None):
     if not r2:
         r2=r
-    image = pygame.image.load(os.path.join("houseReviewData",name))
+    image = pygame.image.load(os.path.join("data",name))
     image = pygame.transform.scale(image, (r, r2))
     return image
 
@@ -41,9 +43,12 @@ def outOfTen(rating, outOfWhat=10):
 class Sound():
     v=1
     pygame.mixer.init(buffer=32)
-    hitSound = pygame.mixer.Sound(os.path.join("data","sound","soundeffect2.wav"))
-    lickSound = pygame.mixer.Sound(os.path.join("data","sound","lickeffect.wav"))
-    lickSound.set_volume(v*0.3)
+    hitSound = pygame.mixer.Sound(os.path.join("data","sound","hit1.wav"))
+    hitSound.set_volume(v*0.3)
+    glassSound = pygame.mixer.Sound(os.path.join("data","sound","glass.wav"))
+    glassSound.set_volume(v*0.3)
+    cashSound = pygame.mixer.Sound(os.path.join("data","sound","cash.wav"))
+    cashSound.set_volume(v*0.3)
     
     pygame.mixer.music.load(os.path.join("data","sound","music.wav")) #must be wav 16bit and stuff?
     pygame.mixer.music.set_volume(v*0.1)
@@ -58,6 +63,8 @@ class Block():
         self.image = image
 
     def land(self):
+        if self.name == "window" or self.name == "roofwindow":
+            Sound.glassSound.play()
         Sound.hitSound.play()
         game.money-=game.building.blockPrice
         game.updateMoneyTextboxes()
@@ -101,6 +108,7 @@ class Game():
             ("Okay moisture level.", 5,7),
             ("Too much rain!", 3,5),
             ("Could not handle a light drizzle!", 1,4),
+            ("THIS IS SOOOOO BAD!", 0,1),
             ("You forgot the roof...", 0,4),
             ("I'm drowning!", 0,4),
             ("Oh no...", 1,5),
@@ -143,7 +151,7 @@ class Game():
     }
 
     def __init__(self):
-        self.money = 69
+        self.money = 690
         self.mode = ""
         self.review_stage = 0
         self.baskets = 0
@@ -191,11 +199,11 @@ class Game():
         rating_textbox.rebuild()
 
     def updateMoneyTextboxes(self):
-        menu_textbox.html_text="Yo though <br>$"+str(game.money)
+        menu_textbox.html_text="Money: <br>$"+str(game.money)
         menu_textbox.rebuild()
-        build_textbox.html_text="Yo though <br>$"+str(game.money)
+        build_textbox.html_text="Money: <br>$"+str(game.money)
         build_textbox.rebuild()
-        shop_textbox.html_text="Yo though <br>$"+str(game.money)
+        shop_textbox.html_text="Money: <br>$"+str(game.money)
         shop_textbox.rebuild()
 
     def speak(self, quotes, rating, rating_max):
@@ -206,9 +214,17 @@ class Game():
     def draw(self):
         if self.building:
             self.building.draw()
+        if self.mode=="":
+            textsurface_menu = myfont.render("House Review!", True, (10, 10, 50))
+            game_display.blit(textsurface_menu,(300,30))    
         if self.mode=="r":
             image = self.current_rater_images[self.review_stage]
             game_display.blit(image, (resolution[0]-(resolution[1]*3)//4, topLeft[1]))
+        if self.mode=="b":
+            txt = "Use the arrowkeys or similar to build." + " Press number keys to use buckets!"*int(bool(len(self.building.holdings)))
+            textsurface_buckets = myfont2.render(txt, True, (0, 0, 0))
+            game_display.blit(textsurface_buckets,(10, resolution[1]-30))
+                
 
 class Building():
 
@@ -272,11 +288,18 @@ class Building():
         for block in self.blocks:
             block.draw()
         if(game.mode=="b"):
-            for i in range(len(self.holdings)):
+            if self.holdings:
                 d = gridSize//4
+                textsurface_buckets = myfont2.render("Buckets:", True, (0, 0, 0))
+                game_display.blit(textsurface_buckets,(topLeft[0]+(self.width+1)*gridSize-d, topLeft[1]-d-20))
+                
+            for i in range(len(self.holdings)):
                 pygame.draw.rect(game_display, (100,100,100), (topLeft[0]+(self.width+1+2*i)*gridSize-d, topLeft[1]-d, 2*d+gridSize,2*d+gridSize), 0)
                 if not self.holdings[i] == None:
                     self.holdings[i].draw()
+
+                textsurface_nr = myfont2.render(str(i+1), True, (0, 0, 0))
+                game_display.blit(textsurface_nr,(topLeft[0]+(self.width+1+2*i)*gridSize+2*d-8, topLeft[1]+d+gridSize+8))
 
 class House(Building):
     blockPrice = 1
@@ -513,7 +536,7 @@ class Castle(Building):
 
 
 # Main Menu
-menu_textbox = pygame_gui.elements.UITextBox(relative_rect=pygame.Rect((20, 25), (200, 75)),html_text="Yo though <br>$69",manager=managers[""])
+menu_textbox = pygame_gui.elements.UITextBox(relative_rect=pygame.Rect((20, 25), (200, 75)),html_text="Money: <br>$69",manager=managers[""])
 difficulty_textbox = pygame_gui.elements.UITextBox(relative_rect=pygame.Rect((1000, 125), (200, 50)),html_text=str(int(100*difficulty))+'% difficulty.',manager=managers[""])
 difficulty_slider = pygame_gui.elements.UIHorizontalSlider(relative_rect=pygame.Rect((1000, 200), (200, 50)),start_value=100, value_range=(0,100), manager=managers[""])
 difficulty_slider.enable_arrow_buttons=0
@@ -528,11 +551,11 @@ back_buttons = [
 ]
 
 # Building
-build_textbox = pygame_gui.elements.UITextBox(relative_rect=pygame.Rect((720, 200), (200, 75)),html_text="Yo though <br>$69",manager=managers["b"])
-done_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((720, 300), (400, 300)),text='Is good now',manager=managers["b"])
+build_textbox = pygame_gui.elements.UITextBox(relative_rect=pygame.Rect((720, 200), (200, 75)),html_text="Money: <br>$69",manager=managers["b"])
+done_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((720, 300), (400, 300)),text="It's done now... Sell it!",manager=managers["b"])
 
 # Shop
-shop_textbox = pygame_gui.elements.UITextBox(relative_rect=pygame.Rect((200, 125), (200, 75)),html_text="Yo though <br>$69",manager=managers["s"])
+shop_textbox = pygame_gui.elements.UITextBox(relative_rect=pygame.Rect((200, 125), (200, 75)),html_text="Money: <br>$69",manager=managers["s"])
 basket_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((125, 275), (200, 50)),text='Buy Bucket ($100)',manager=managers["s"])
 plateau_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((350, 350), (200, 50)),text='Platform Tiles ($30)',manager=managers["s"])
 roofwindow_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((350, 425), (200, 50)),text='Roof Window Tiles ($10)',manager=managers["s"])
@@ -562,18 +585,20 @@ while jump_out == False:
             if game.building:
                 if event.key in [pygame.K_RIGHT, pygame.K_d]:
                     if game.building.flyingBlock.x<game.building.width-1:
-                        Sound.lickSound.play()
+                        #Sound.lickSound.play()
                         game.building.flyingBlock.x+=1
                 if event.key in [pygame.K_LEFT, pygame.K_a]:
                     if game.building.flyingBlock.x>0:
-                        Sound.lickSound.play()
+                        #Sound.lickSound.play()
                         game.building.flyingBlock.x-=1
                 if event.key in [pygame.K_DOWN, pygame.K_s, pygame.K_SPACE]:
                     if game.money>=game.building.blockPrice and not game.building.grid[0][game.building.flyingBlock.x]:
                         game.building.flyingBlock.land()
+                        done_button.enable()
+
                 for i in range(len(game.building.holdings)):
                     if event.key == getattr(pygame,"K_"+str(i+1)):
-                        Sound.lickSound.play()
+                        #Sound.lickSound.play()
                         if game.building.holdings[i]:
                             game.building.holdings[i].x, game.building.holdings[i].y = (game.building.flyingBlock.x, game.building.flyingBlock.y)
                         game.building.flyingBlock.x, game.building.flyingBlock.y = (game.building.width+1+2*i, 0)
@@ -600,15 +625,18 @@ while jump_out == False:
                 if event.ui_element == build_button:
                     if game.money>=House.blockPrice:
                         game.mode="b"
+                        done_button.disable()
                         game.start(House)
                 if event.ui_element == castle_button:
                     if game.money>=Castle.blockPrice:
                         game.mode="b"
+                        done_button.disable()
                         game.start(Castle)
                 if event.ui_element == done_button and len(game.building.blocks):
                     game.start_rating()
 
-                if event.ui_element == payment_button:
+                if event.ui_element == payment_button: 
+                    Sound.cashSound.play() 
                     game.mode=""
                     game.updateMoneyTextboxes()
                 if event.ui_element == ok_button:
@@ -630,6 +658,7 @@ while jump_out == False:
                         game.money-=2
                         if random.random()<0.01:
                             game.money+=100
+                            Sound.cashSound.play()
                         game.updateMoneyTextboxes()
                 if event.ui_element == ads_button:
                     if game.money>=10:
